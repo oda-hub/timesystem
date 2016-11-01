@@ -38,9 +38,11 @@ def converttime(informat,intime,outformat):
 if __name__ == '__main__':
     port=7543
 
+    import os
+    os.environ['EXPORT_SERVICE_PORT']="%i"%port
     try:
         from export_service import export_service
-        port=export_service("integral-timesystem","/integral-timesystem/api/v1.0/IJD/3000/SCWID")
+        port=export_service("integral-timesystem","/integral-timesystem/api/v1.0/IJD/3000/UTC",interval=0.2)
     except:
         raise
     
