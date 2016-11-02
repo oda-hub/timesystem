@@ -8,6 +8,12 @@ import sys
 import pilton
 import re
 
+from dlogging import logging
+from dlogging import log as dlog
+
+import socket
+
+context=socket.gethostname()
 
 app = Flask(__name__)
 
@@ -25,6 +31,10 @@ def converttime(informat,intime,outformat):
         ct.run()
     except Exception as e:
         print "problem:",e
+        r=jsonify({'error from converttime':repr(e),'output':ct.output})
+        r.status_code=400
+        dlog(logging.ERROR,"error in converttime "+repr(e))
+        return r
 
     r=dict(re.findall("Log_1  : Input Time\(.*?\): .*? Output Time\((.*?)\): (.*?)\n",ct.output,re.S))
 
@@ -35,6 +45,10 @@ def converttime(informat,intime,outformat):
     else:
         return r[outformat]
 
+@app.route('/poke', methods=['GET'])
+def poke():
+    return ""
+
 if __name__ == '__main__':
     port=7543
 
@@ -42,7 +56,7 @@ if __name__ == '__main__':
     os.environ['EXPORT_SERVICE_PORT']="%i"%port
     try:
         from export_service import export_service
-        port=export_service("integral-timesystem","/integral-timesystem/api/v1.0/IJD/3000/UTC",interval=0.2)
+        port=export_service("integral-timesystem","/poke",interval=0.1,timeout=0.2)
     except:
         raise
     
