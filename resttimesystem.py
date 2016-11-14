@@ -32,7 +32,14 @@ def converttime(informat,intime,outformat):
     except Exception as e:
         print "problem:",e
         r=jsonify({'error from converttime':repr(e),'output':ct.output})
-        r.status_code=400
+
+        if outformat=="SCWID":
+            try:
+                c=isdclient.getscw(intime)
+            except Exception as ei:
+                r=jsonify({'error from converttime':repr(e),'output':ct.output,'error from ISDC':repr(ei),'ISDC response':c})
+
+        r.status_code=500
         dlog(logging.ERROR,"error in converttime "+repr(e))
         return r
 
@@ -50,15 +57,11 @@ def poke():
     return ""
 
 if __name__ == '__main__':
-    port=7543
 
     import os
-    os.environ['EXPORT_SERVICE_PORT']="%i"%port
-    try:
-        from export_service import export_service
-        port=export_service("integral-timesystem","/poke",interval=0.1,timeout=0.2)
-    except:
-        raise
+    from export_service import export_service,pick_port
+    os.environ['EXPORT_SERVICE_PORT']="%i"%pick_port("")
+    port=export_service("integral-timesystem","/poke",interval=0.1,timeout=0.2)
     
     ##
     app.run(debug=False,port=port)

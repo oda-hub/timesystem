@@ -4,6 +4,7 @@ setup(
         name='integral-timesystem',
         version='1.0',
         py_modules= ['timesystem','resttimesystem'],
+        scripts=["resttimesystem.sh"],
         package_data     = {
             "": [
                 "*.txt",
