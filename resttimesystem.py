@@ -12,6 +12,7 @@ from dlogging import logging
 from dlogging import log as dlog
 
 import socket
+import datamirror
 
 context=socket.gethostname()
 
@@ -22,6 +23,9 @@ def converttime(informat,intime,outformat):
     if outformat=="ANY":
         outformat=""
 
+    if informat=="SCWID":
+        datamirror.ensure_data(scw=intime)
+
     ct=pilton.heatool("converttime")
     ct['informat']=informat
     ct['intime']=intime
@@ -31,7 +35,7 @@ def converttime(informat,intime,outformat):
         ct.run()
     except Exception as e:
         print "problem:",e
-        r=jsonify({'error from converttime':repr(e),'output':ct.output})
+        r=jsonify({'error from converttime':repr(e),'output':ct.output if hasattr(ct,'output') else None})
 
         if outformat=="SCWID":
             try:
