@@ -1,6 +1,10 @@
 import pilton
 import re
-import fermi,integral,re
+
+try:
+    import fermi,integral
+except:
+    pass
 
 
 def converttime(informat,intime,outformat):
