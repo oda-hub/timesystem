@@ -13,6 +13,7 @@ from dlogging import log as dlog
 
 import socket
 import datamirror
+import isdcclient
 
 context=socket.gethostname()
 
@@ -39,8 +40,20 @@ def converttime(informat,intime,outformat):
 
         if outformat=="SCWID":
             try:
-                c=isdclient.getscw(intime)
+                return isdcclient.getscw(intime)
             except Exception as ei:
+                r=jsonify({'error from converttime':repr(e),'output':ct.output,'error from ISDC':repr(ei),'ISDC response':c})
+        
+        if outformat=="":
+            try:
+                r=dict(re.findall("Log_1  : Input Time\(.*?\): .*? Output Time\((.*?)\): (.*?)\n",ct.output,re.S))
+                print r
+                c=isdcclient.getscw(intime)
+                r['SCWID']=c
+                r=jsonify(r)
+            except Exception as ei:
+                raise
+                print ei
                 r=jsonify({'error from converttime':repr(e),'output':ct.output,'error from ISDC':repr(ei),'ISDC response':c})
 
         r.status_code=500

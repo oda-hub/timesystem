@@ -13,6 +13,10 @@ setup(
                 "*.py"
                 ]
             },
+        install_requires=[
+            'flask',
+            'requests',
+        ],
         license='Creative Commons Attribution-Noncommercial-Share Alike license',
         long_description=open('README.md').read(),
         )
