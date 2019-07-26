@@ -1,12 +1,24 @@
+#!flask/bin/python
+from flask import Flask, url_for, jsonify, send_file, request
+
+import requests
+
+import sys
 import pilton
 import re
 
-try:
-    import fermi,integral
-except:
+import socket
+
+def dlog(*a, **aa):
     pass
 
+consul=False
 
+context=socket.gethostname()
+
+app = Flask(__name__)
+
+@app.route('/api/v1.0/converttime/<string:informat>/<string:intime>/<string:outformat>', methods=['GET'])
 def converttime(informat,intime,outformat):
     if outformat=="ANY":
         outformat=""
@@ -22,13 +34,25 @@ def converttime(informat,intime,outformat):
     try:
         ct.run()
     except Exception as e:
-        print "problem:",e
+        print("problem:",e)
         r=jsonify({'error from converttime':repr(e),'output':ct.output if hasattr(ct,'output') else None})
 
         if outformat=="SCWID":
             try:
-                c=isdclient.getscw(intime)
+                return isdcclient.getscw(intime)
             except Exception as ei:
+                r=jsonify({'error from converttime':repr(e),'output':ct.output,'error from ISDC':repr(ei),'ISDC response':c})
+        
+        if outformat=="":
+            try:
+                r=dict(re.findall("Log_1  : Input Time\(.*?\): .*? Output Time\((.*?)\): (.*?)\n",ct.output,re.S))
+                print(r)
+                c=isdcclient.getscw(intime)
+                r['SCWID']=c
+                r=jsonify(r)
+            except Exception as ei:
+                raise
+                print(ei)
                 r=jsonify({'error from converttime':repr(e),'output':ct.output,'error from ISDC':repr(ei),'ISDC response':c})
 
         r.status_code=500
@@ -37,40 +61,29 @@ def converttime(informat,intime,outformat):
 
     r=dict(re.findall("Log_1  : Input Time\(.*?\): .*? Output Time\((.*?)\): (.*?)\n",ct.output,re.S))
 
-    print r
+    print(r)
 
     if outformat=="":
         return jsonify(r)
     else:
         return r[outformat]
 
+@app.route('/poke', methods=['GET'])
+def poke():
+    return ""
 
+if __name__ == '__main__':
 
+    if consul:
+        import os
+        from export_service import export_service,pick_port
+        os.environ['EXPORT_SERVICE_PORT']="%i"%pick_port("")
+        port=export_service("integral-timesystem","/poke",interval=0.1,timeout=0.2)
 
-def x2ijd(x,rbp=None):
-    if isinstance(x,float) or  isinstance(x,int):
-        print "float must be IJD: IJD found!"
-
-        if float(x)>10000.:
-            print "too big for IJD - must be fermis"
-            return fermi.fermis2ijd(float(x))
-        return x
-
-    if not isinstance(x,str):
-        print "should be float or string"
-        return
-
-    if re.match("^\d*.\d*$",x) or re.match("^\d*$",x):
-        print "IJD found!",x
-        return float(x)
-
-    if re.match("\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.?\d*",x):
-        print "UTC found!"
-        return integral.utc2ijd(x,rbp=rbp)
-
-    print "can not interpret time:",x
-
-    return None
-
-def x2fermis(x):
-    return fermi.ijd2fermis(x2ijd(x))
+        host=os.environ['EXPORT_SERVICE_HOST'] if 'EXPORT_SERVICE_HOST' in os.environ else '127.0.0.1'
+    else:
+        host="0.0.0.0"
+        port=5000
+        
+    ##
+    app.run(debug=False,port=port,host=host)

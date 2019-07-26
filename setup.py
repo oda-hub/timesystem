@@ -3,8 +3,7 @@ from distutils.core import setup
 setup(
         name='integral-timesystem',
         version='1.0',
-        py_modules= ['timesystem','resttimesystem'],
-        scripts=["resttimesystem.sh"],
+        py_modules= ['timesystem'],
         package_data     = {
             "": [
                 "*.txt",
