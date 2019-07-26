@@ -145,7 +145,7 @@ def lastscw_rbp(rbp_var_suffix):
 
     print("rbp_var, rbp", rbp_var, rbp)
     idx = scwidx.index(rbp)
-    return list(idx['table']['SWID'][-1])
+    return str(idx['table']['SWID'][-1])
 
 
 def scwlist_rbp(rbp_var_suffix, t1: float, t2: float):
