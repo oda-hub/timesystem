@@ -6,6 +6,7 @@ import requests
 import sys
 import pilton
 import re
+import logging
 
 import socket
 
