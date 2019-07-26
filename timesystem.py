@@ -5,12 +5,20 @@ import requests
 
 import os
 import sys
+import glob
+import time
+
 import copy
-import pilton
 import re
 import logging
-
 import socket
+
+import pilton
+
+from astropy.table import Table
+from astropy.io import fits
+from astropy.time import Time
+
 
 def dlog(*a, **aa):
     pass
@@ -73,9 +81,107 @@ def converttime(informat,intime,outformat):
     return r
 
 
+class SCWIDX:
+    def __init__(self):
+        self.cache = {}
+
+    def index(self, rbp, version=None):
+        k = (rbp, version)
+        if k in self.cache and self.cache[k]['expires_at'] > time.time():
+            print("found cached",k)
+            return self.cache[k]
+
+        if version is None:
+            fn_p = rbp+"/idx/scw/GNRL-SCWG-GRP-IDX_*"
+            fn = sorted(glob.glob(fn_p))[-1]
+
+            version = re.search("GNRL-SCWG-GRP-IDX_(.*?).fits.*", os.path.basename(fn)).groups()[0]
+
+            expires_at = time.time() + 3600
+        else:
+            fn = rbp+"/idx/scw/GNRL-SCWG-GRP-IDX_"+version
+
+            expires_at = time.time() + 24*3600*7
+
+        print("picking", fn, version, expires_at)
+
+        r = dict(
+                    table = Table.read(fits.open(fn)[1]), 
+                    table_version = version, 
+                    expires_at = expires_at,
+                )
+
+        self.cache[k] = r
+
+        return r
+    
+    def nrt(self, version=None):
+        return self.index(os.environ.get('REP_BASE_PROD_NRT'))
+    
+    def cons(self, version=None):
+        return self.index(os.environ.get('REP_BASE_PROD_CONS'))
+
+
+scwidx = SCWIDX()
+
+def normalize_time(t):
+    try:
+        t=float(t)
+
+        if t < 10000: # IJD
+            return t
+        else:
+            return t - 51544.0 # MJD
+    except:
+        return Time(t).mjd - 51544.0
+
+
+def scwlist_rbp(rbp_var_suffix, t1, t2):
+    idx = scwidx.index(os.environ.get("REP_BASE_PROD_"+rbp_var_suffix))
+    
+    print(idx['table'].columns)
+
+    return idx['table']['SWID'][-1]
+
+@app.route('/api/v1.0/scwlist/<string:readiness>/<string:t1>/<string:t2>', methods=['GET'])
+def scwlist(readiness,t1,t2):
+    problems = []
+    output = None
+
+    if readiness.lower() == "any":
+        rbp_var_suffixes = ["NRT", "CONS"]
+    elif readiness.lower() == "nrt":
+        rbp_var_suffixes = ["NRT", ]
+    elif readiness.lower() == "cons":
+        rbp_var_suffixes = ["CON", ]
+    else:
+        r = jsonify({'bad request:','readiness undefined'})
+        r.status_code=400
+        return r
+
+    for rbp_var_suffix in rbp_var_suffixes:
+        try:
+            output = scwlist_rbp(rbp_var_suffix, t1, t2)
+
+
+            return jsonify(output)
+        except Exception as e:
+            p = {'error from scwlist_rbp':repr(e),'output':output }
+            print("problem:", p)
+    
+            problems.append(p)
+
+    r = jsonify(problems)
+
+    r.status_code=500
+    dlog(logging.ERROR,"error in converttime "+repr(problems))
+    return r
+
+
+@app.route('/', methods=['GET'])
 @app.route('/poke', methods=['GET'])
 def poke():
-    return ""
+    return "all is ok"
 
 if __name__ == '__main__':
 
