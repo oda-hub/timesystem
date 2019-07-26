@@ -3,7 +3,9 @@ from flask import Flask, url_for, jsonify, send_file, request
 
 import requests
 
+import os
 import sys
+import copy
 import pilton
 import re
 import logging
@@ -19,55 +21,51 @@ context=socket.gethostname()
 
 app = Flask(__name__)
 
-@app.route('/api/v1.0/converttime/<string:informat>/<string:intime>/<string:outformat>', methods=['GET'])
-def converttime(informat,intime,outformat):
-    if outformat=="ANY":
-        outformat=""
-
-    if informat=="SCWID":
-        datamirror.ensure_data(scw=intime)
-
+def converttime_rbp(rbp_var_suffix,informat,intime,outformat):
     ct=pilton.heatool("converttime")
     ct['informat']=informat
     ct['intime']=intime
     ct['outformat']=outformat
 
-    try:
-        ct.run()
-    except Exception as e:
-        print("problem:",e)
-        r=jsonify({'error from converttime':repr(e),'output':ct.output if hasattr(ct,'output') else None})
+    env = copy.deepcopy(os.environ)
+    env['REP_BASE_PROD'] = env['REP_BASE_PROD_'+rbp_var_suffix] 
 
-        if outformat=="SCWID":
-            try:
-                return isdcclient.getscw(intime)
-            except Exception as ei:
-                r=jsonify({'error from converttime':repr(e),'output':ct.output,'error from ISDC':repr(ei),'ISDC response':c})
-        
-        if outformat=="":
-            try:
-                r=dict(re.findall("Log_1  : Input Time\(.*?\): .*? Output Time\((.*?)\): (.*?)\n",ct.output,re.S))
-                print(r)
-                c=isdcclient.getscw(intime)
-                r['SCWID']=c
-                r=jsonify(r)
-            except Exception as ei:
-                raise
-                print(ei)
-                r=jsonify({'error from converttime':repr(e),'output':ct.output,'error from ISDC':repr(ei),'ISDC response':c})
+    ct.run(env=env)
 
-        r.status_code=500
-        dlog(logging.ERROR,"error in converttime "+repr(e))
-        return r
+    return ct.output if hasattr(ct,'output') else None
 
-    r=dict(re.findall("Log_1  : Input Time\(.*?\): .*? Output Time\((.*?)\): (.*?)\n",ct.output,re.S))
+@app.route('/api/v1.0/converttime/<string:informat>/<string:intime>/<string:outformat>', methods=['GET'])
+def converttime(informat,intime,outformat):
+    if outformat=="ANY":
+        outformat=""
 
-    print(r)
 
-    if outformat=="":
-        return jsonify(r)
-    else:
-        return r[outformat]
+    problems = []
+    output = None
+    for rbp_var_suffix in "NRT", "CONS":
+        try:
+            output = converttime_rbp(rbp_var_suffix,informat,intime,outformat)
+            r=dict(re.findall("Log_1  : Input Time\(.*?\): .*? Output Time\((.*?)\): (.*?)\n",output,re.S))
+
+            print(r)
+
+            if outformat=="":
+                return jsonify(r)
+            else:
+                return r[outformat]
+
+        except Exception as e:
+            p = {'error from converttime':repr(e),'output':output }
+            print("problem:", p)
+    
+            problems.append(p)
+
+    r = jsonify(problems)
+
+    r.status_code=500
+    dlog(logging.ERROR,"error in converttime "+repr(e))
+    return r
+
 
 @app.route('/poke', methods=['GET'])
 def poke():
