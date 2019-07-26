@@ -70,7 +70,7 @@ def converttime(informat,intime,outformat):
                 return r[outformat]
 
         except Exception as e:
-            p = {'error from converttime':repr(e),'output':output, 'traceback':traceback.print_exc()}
+            p = {'error from converttime':repr(e),'output':output, 'traceback':traceback.format_exc()}
             print("problem:", p)
     
             problems.append(p)
