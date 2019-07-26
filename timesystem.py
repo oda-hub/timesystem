@@ -98,7 +98,10 @@ class SCWIDX:
 
             version = re.search("GNRL-SCWG-GRP-IDX_(.*?).fits.*", os.path.basename(fn)).groups()[0]
 
-            expires_at = time.time() + 3600
+            if 'nrt' in rbp:
+                expires_at = time.time() + 600
+            else:
+                expires_at = time.time() + 7200
         else:
             fn = rbp+"/idx/scw/GNRL-SCWG-GRP-IDX_"+version
 
@@ -142,7 +145,7 @@ def lastscw_rbp(rbp_var_suffix):
 
     print("rbp_var, rbp", rbp_var, rbp)
     idx = scwidx.index(rbp)
-    return idx['table']['SWID'][-1]
+    return list(idx['table']['SWID'][-1])
 
 
 def scwlist_rbp(rbp_var_suffix, t1: float, t2: float):
@@ -160,7 +163,7 @@ def scwlist_rbp(rbp_var_suffix, t1: float, t2: float):
 @app.route('/api/v1.0/scwlist/<string:readiness>/<string:t1>/<string:t2>', methods=['GET'])
 def scwlist(readiness,t1,t2):
     problems = []
-    output = None
+    output = []
 
     if readiness.lower() == "any":
         rbp_var_suffixes = ["NRT", "CONS"]
@@ -169,34 +172,43 @@ def scwlist(readiness,t1,t2):
     elif readiness.lower() == "cons":
         rbp_var_suffixes = ["CONS", ]
     else:
-        r = jsonify({'bad request:','readiness undefined'})
+        r = jsonify({'bad request:': 'readiness undefined'})
         r.status_code=400
         return r
 
-    t1_ijd = time2ijd(t1)
-    t2_ijd = time2ijd(t2)
+    try:
+        t1_ijd = time2ijd(t1)
+        t2_ijd = time2ijd(t2)
+    except ValueError as e:
+        r = jsonify({'bad request:': 'failed to interpret time: '+repr(e)})
+        r.status_code=400
+        return r
+        
+        
 
     for rbp_var_suffix in rbp_var_suffixes:
         try:
-            output = scwlist_rbp(rbp_var_suffix, t1_ijd, t2_ijd)
-
-
-            if 'debug' in request.args:
-                return jsonify(dict(
-                                    output=output,
-                                    t1_ijd=t1_ijd,
-                                    t2_ijd=t2_ijd,
-                                    readiness=rbp_var_suffix,
-                                    lastscw=lastscw_rbp(rbp_var_suffix),
-                                ))
-            else:
-                return jsonify(output)
+            output += scwlist_rbp(rbp_var_suffix, t1_ijd, t2_ijd)
 
         except Exception as e:
             p = {'error from scwlist_rbp':repr(e),'output':output, 'traceback':traceback.format_exc() } # sentry!!
             print("problem:", p)
     
             problems.append(p)
+
+    if problems == []:
+        output = sorted(set(output))
+
+        if 'debug' in request.args:
+            return jsonify(dict(
+                                output=output,
+                                t1_ijd=t1_ijd,
+                                t2_ijd=t2_ijd,
+                                readiness=rbp_var_suffix,
+                                lastscw=lastscw_rbp(rbp_var_suffix),
+                            ))
+        else:
+            return jsonify(output)
 
     r = jsonify(problems)
 
@@ -213,7 +225,9 @@ def scwlist(readiness,t1,t2):
 
 @app.route('/test', methods=['GET'])
 def test():
-    pass
+    import subprocess
+    c=subprocess.check_output(["python","-m", "pytest", "-sv", "/timesystem/tests"])
+    return c
 
 @app.route('/', methods=['GET'])
 @app.route('/poke', methods=['GET'])
