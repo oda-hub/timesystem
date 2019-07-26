@@ -4,12 +4,12 @@ import time
 
 
 def test_normtime():
-    from timesystem import normalize_time
+    from timesystem import time2ijd
 
-    print(normalize_time(1000))
-    print(normalize_time(1000.))
-    print(normalize_time("1000"))
-    print(normalize_time("60000."))
-    print(normalize_time("2015-01-01T11:11:11"))
+    print(time2ijd(1000))
+    print(time2ijd(1000.))
+    print(time2ijd("1000"))
+    print(time2ijd("60000."))
+    print(time2ijd("2015-01-01T11:11:11"))
     
     

@@ -124,7 +124,7 @@ class SCWIDX:
 
 scwidx = SCWIDX()
 
-def normalize_time(t):
+def time2ijd(t):
     try:
         t=float(t)
 
@@ -136,12 +136,13 @@ def normalize_time(t):
         return Time(t).mjd - 51544.0
 
 
-def scwlist_rbp(rbp_var_suffix, t1, t2):
+def scwlist_rbp(rbp_var_suffix, t1: float, t2: float):
     idx = scwidx.index(os.environ.get("REP_BASE_PROD_"+rbp_var_suffix))
-    
-    print(idx['table'].columns)
 
-    return idx['table']['SWID'][-1]
+    m = idx['table']['TSTART'] < t2
+    m &= idx['table']['TSTOP'] > t1
+
+    return list(idx['table']['SWID'][m])
 
 @app.route('/api/v1.0/scwlist/<string:readiness>/<string:t1>/<string:t2>', methods=['GET'])
 def scwlist(readiness,t1,t2):
@@ -161,7 +162,7 @@ def scwlist(readiness,t1,t2):
 
     for rbp_var_suffix in rbp_var_suffixes:
         try:
-            output = scwlist_rbp(rbp_var_suffix, t1, t2)
+            output = scwlist_rbp(rbp_var_suffix, time2ijd(t1), time2ijd(t2))
 
 
             return jsonify(output)
