@@ -23,6 +23,7 @@ app = Flask(__name__)
 
 def converttime_rbp(rbp_var_suffix,informat,intime,outformat):
     ct=pilton.heatool("converttime")
+    
     ct['informat']=informat
     ct['intime']=intime
     ct['outformat']=outformat
@@ -45,10 +46,11 @@ def converttime(informat,intime,outformat):
     for rbp_var_suffix in "NRT", "CONS":
         try:
             output = converttime_rbp(rbp_var_suffix,informat,intime,outformat)
+            print("convertime completed")
 
             r=dict(re.findall("Log_1  : Input Time\(.*?\): .*? Output Time\((.*?)\): (.*?)\n",output,re.S))
 
-            print(r)
+            print("extracted", r)
 
             if outformat=="":
                 return jsonify(r)
