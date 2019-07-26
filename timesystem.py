@@ -136,9 +136,21 @@ def time2ijd(t):
     except:
         return Time(t).mjd - 51544.0
 
+def lastscw_rbp(rbp_var_suffix):
+    rbp_var = "REP_BASE_PROD_"+rbp_var_suffix
+    rbp = os.environ.get(rbp_var)
+
+    print("rbp_var, rbp", rbp_var, rbp)
+    idx = scwidx.index(rbp)
+    return idx['SWID'][-1]
+
 
 def scwlist_rbp(rbp_var_suffix, t1: float, t2: float):
-    idx = scwidx.index(os.environ.get("REP_BASE_PROD_"+rbp_var_suffix))
+    rbp_var = "REP_BASE_PROD_"+rbp_var_suffix
+    rbp = os.environ.get(rbp_var)
+
+    print("rbp_var, rbp", rbp_var, rbp)
+    idx = scwidx.index(rbp)
 
     m = idx['table']['TSTART'] < t2
     m &= idx['table']['TSTOP'] > t1
@@ -155,18 +167,31 @@ def scwlist(readiness,t1,t2):
     elif readiness.lower() == "nrt":
         rbp_var_suffixes = ["NRT", ]
     elif readiness.lower() == "cons":
-        rbp_var_suffixes = ["CON", ]
+        rbp_var_suffixes = ["CONS", ]
     else:
         r = jsonify({'bad request:','readiness undefined'})
         r.status_code=400
         return r
 
+    t1_ijd = time2ijd(t1)
+    t2_ijd = time2ijd(t2)
+
     for rbp_var_suffix in rbp_var_suffixes:
         try:
-            output = scwlist_rbp(rbp_var_suffix, time2ijd(t1), time2ijd(t2))
+            output = scwlist_rbp(rbp_var_suffix, t1_ijd, t2_ijd)
 
 
-            return jsonify(output)
+            if 'debug' in request.args:
+                return jsonify(dict(
+                                    output=output,
+                                    t1_ijd=t1_ijd,
+                                    t2_ijd=t2_ijd,
+                                    readiness=rbp_var_suffix,
+                                    lastscw=lastscw_rbp(rbp_var_suffix),
+                                ))
+            else:
+                return jsonify(output)
+
         except Exception as e:
             p = {'error from scwlist_rbp':repr(e),'output':output, 'traceback':traceback.format_exc() } # sentry!!
             print("problem:", p)
@@ -177,7 +202,13 @@ def scwlist(readiness,t1,t2):
 
     r.status_code=500
     dlog(logging.ERROR,"error in converttime "+repr(problems))
-    return r
+
+    # return index version, last scw
+
+    if 'debug' in request.args:
+        return r
+    else:
+        return r
 
 
 @app.route('/test', methods=['GET'])
