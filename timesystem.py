@@ -168,7 +168,7 @@ def scwlist(readiness,t1,t2):
 
             return jsonify(output)
         except Exception as e:
-            p = {'error from scwlist_rbp':repr(e),'output':output }
+            p = {'error from scwlist_rbp':repr(e),'output':output, 'traceback':traceback.format_exc() } # sentry!!
             print("problem:", p)
     
             problems.append(p)
