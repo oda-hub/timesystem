@@ -67,7 +67,7 @@ def converttime(informat,intime,outformat):
     r = jsonify(problems)
 
     r.status_code=500
-    dlog(logging.ERROR,"error in converttime "+repr(e))
+    dlog(logging.ERROR,"error in converttime "+repr(problems))
     return r
 
 
