@@ -12,6 +12,7 @@ import copy
 import re
 import logging
 import socket
+import traceback
 
 import pilton
 
@@ -69,7 +70,7 @@ def converttime(informat,intime,outformat):
                 return r[outformat]
 
         except Exception as e:
-            p = {'error from converttime':repr(e),'output':output }
+            p = {'error from converttime':repr(e),'output':output, 'traceback':traceback.print_exc()}
             print("problem:", p)
     
             problems.append(p)
@@ -178,6 +179,10 @@ def scwlist(readiness,t1,t2):
     dlog(logging.ERROR,"error in converttime "+repr(problems))
     return r
 
+
+@app.route('/test', methods=['GET'])
+def test():
+    pass
 
 @app.route('/', methods=['GET'])
 @app.route('/poke', methods=['GET'])
