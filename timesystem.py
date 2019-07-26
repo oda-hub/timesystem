@@ -45,6 +45,7 @@ def converttime(informat,intime,outformat):
     for rbp_var_suffix in "NRT", "CONS":
         try:
             output = converttime_rbp(rbp_var_suffix,informat,intime,outformat)
+
             r=dict(re.findall("Log_1  : Input Time\(.*?\): .*? Output Time\((.*?)\): (.*?)\n",output,re.S))
 
             print(r)
@@ -52,6 +53,9 @@ def converttime(informat,intime,outformat):
             if outformat=="":
                 return jsonify(r)
             else:
+                if 'is close' in r[outformat]:
+                    raise Exception("conversion impossible: "+repr(r))
+
                 return r[outformat]
 
         except Exception as e:
