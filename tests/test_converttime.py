@@ -26,3 +26,20 @@ def test_utc2scw(client):
     print(r.json)
 
 
+def test_any2scw(client):
+    t0=time.time()
+    r=client.get(url_for('converttime',informat="ANY",intime='2019-06-10T11:27:45',outformat="SCWID"))
+
+    print(r)
+
+    assert r.status_code == 200
+    print(r.json)
+
+
+    t0=time.time()
+    r=client.get(url_for('converttime',informat="ANY",intime='3000',outformat="SCWID"))
+
+    print(r)
+
+    assert r.status_code == 200
+    print(r.json)

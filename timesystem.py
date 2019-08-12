@@ -44,10 +44,29 @@ def converttime_rbp(rbp_var_suffix,informat,intime,outformat):
 
     return ct.output if hasattr(ct,'output') else None
 
+def detect_timeformat(t):
+    try:
+        t=float(t)
+        if t > 20000:
+            return 'MJD'
+        else:
+            return 'IJD'
+    except:
+        pass
+
+    try:
+        if Time(t).format == "isot":
+            return "UTC"
+    except Exception as e:
+        raise Exception("unknown time format: %s"%repr(e))
+
 @app.route('/api/v1.0/converttime/<string:informat>/<string:intime>/<string:outformat>', methods=['GET'])
 def converttime(informat,intime,outformat):
     if outformat=="ANY":
         outformat=""
+
+    if informat == "ANY":
+        informat = detect_timeformat(intime)
 
 
     problems = []
