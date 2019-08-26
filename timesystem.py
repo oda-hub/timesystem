@@ -8,6 +8,8 @@ import sys
 import glob
 import time
 
+from typing import TypeVar, Iterable, Tuple, Union
+
 import copy
 import re
 import logging
@@ -19,6 +21,7 @@ import pilton
 from astropy.table import Table
 from astropy.io import fits
 from astropy.time import Time
+from astropy.coordinates import SkyCoord
 
 
 def dlog(*a, **aa):
@@ -167,7 +170,7 @@ def lastscw_rbp(rbp_var_suffix):
     return str(idx['table']['SWID'][-1])
 
 
-def scwlist_rbp(rbp_var_suffix, t1: float, t2: float):
+def scwlist_rbp(rbp_var_suffix, t1: float, t2: float, ra: Union[float, None], dec: Union[float, None], radius: Union[float, None]):
     rbp_var = "REP_BASE_PROD_"+rbp_var_suffix
     rbp = os.environ.get(rbp_var)
 
@@ -177,12 +180,21 @@ def scwlist_rbp(rbp_var_suffix, t1: float, t2: float):
     m = idx['table']['TSTART'] < t2
     m &= idx['table']['TSTOP'] > t1
 
+    if ra is not None and dec is not None and radius is not None:
+        c = SkyCoord(idx['table']['RA_SCX'], idx['table']['DEC_SCX'], unit="deg")
+        m &= c.separation(SkyCoord(ra, dec, unit="deg")).degree < radius
+
     return list(idx['table']['SWID'][m])
 
 @app.route('/api/v1.0/scwlist/<string:readiness>/<string:t1>/<string:t2>', methods=['GET'])
 def scwlist(readiness,t1,t2):
     problems = []
     output = []
+
+
+    ra = request.args.get("ra", default=None, type=float)
+    dec = request.args.get("dec", default=None, type=float)
+    radius = request.args.get("radius", default=None, type=float)
 
     if readiness.lower() == "any":
         rbp_var_suffixes = ["NRT", "CONS"]
@@ -207,7 +219,7 @@ def scwlist(readiness,t1,t2):
 
     for rbp_var_suffix in rbp_var_suffixes:
         try:
-            output += scwlist_rbp(rbp_var_suffix, t1_ijd, t2_ijd)
+            output += scwlist_rbp(rbp_var_suffix, t1_ijd, t2_ijd, ra, dec, radius)
 
         except Exception as e:
             p = {'error from scwlist_rbp':repr(e),'output':output, 'traceback':traceback.format_exc() } # sentry!!
@@ -240,7 +252,6 @@ def scwlist(readiness,t1,t2):
         return r
     else:
         return r
-
 
 @app.route('/test', methods=['GET'])
 def test():
