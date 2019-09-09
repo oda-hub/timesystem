@@ -1,5 +1,5 @@
 #!flask/bin/python
-from flask import Flask, url_for, jsonify, send_file, request, redirect
+from flask import Flask, url_for, jsonify, send_file, request
 
 import requests
 
@@ -232,20 +232,17 @@ def scwlist(readiness,t1,t2):
             rbp_var = "REP_BASE_PROD_"+rbp_var_suffixes[0]
             rbp = os.environ.get(rbp_var)
 
-            latest_version, fn = scwidx.latest_version(rbp)
-
-            new_url = url_for("scwlist", readiness=readiness, t1=t1, t2=t2, index_version=latest_version)
-            print(new_url)
-
-            return redirect(new_url, code=302)
+            index_version, fn = scwidx.latest_version(rbp)
         else:
-            assert re.match("\d+", index_version)
+            if not re.match("\d+", index_version):
+                r = jsonify({'bad request:': "non-conforming index version"})
+                r.status_code=400
+                return r
     else:
         if index_version is not None:
-            new_url = url_for("scwlist", readiness=readiness, t1=t1, t2=t2, index_version=None)
-            print(new_url)
-
-            return redirect(new_url, code=302)
+            r = jsonify({'bad request:': "index version can only be set with \"cons\" or \"nrt\" source, not \"any\""})
+            r.status_code=400
+            return r
 
     try:
         t1_ijd = time2ijd(t1)
@@ -277,9 +274,10 @@ def scwlist(readiness,t1,t2):
                                 t2_ijd=t2_ijd,
                                 readiness=rbp_var_suffix,
                                 lastscw=lastscw_rbp(rbp_var_suffix),
+                                index_version=index_version,
                             ))
         else:
-            return jsonify(output)
+            return jsonify(dict(scwlist=output, index_version=index_version))
 
     r = jsonify(problems)
 
