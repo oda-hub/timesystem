@@ -199,7 +199,8 @@ def scwlist_rbp(rbp_var_suffix, index_version: str, t1: float, t2: float, ra: Un
         m &= c.separation(SkyCoord(ra, dec, unit="deg")).degree < radius
     
     if min_good_isgri is not None:
-        m &= idx['GOOD_ISGRI'] > min_good_isgri
+        m &= idx['table']['TELAPSE'] > min_good_isgri
+        m &= idx['table']['IBISMODE'] == 41
 
     return list(idx['table']['SWID'][m])
 
@@ -212,7 +213,7 @@ def scwlist(readiness,t1,t2):
     ra = request.args.get("ra", default=None, type=float)
     dec = request.args.get("dec", default=None, type=float)
     radius = request.args.get("radius", default=None, type=float)
-    min_good_isgri = request.args.get("min-good-isgri", default=None, type=float)
+    min_good_isgri = request.args.get("min_good_isgri", default=None, type=float)
 
     if readiness.lower() == "any":
         rbp_var_suffixes = ["NRT", "CONS"]
