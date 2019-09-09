@@ -1,5 +1,5 @@
 #!flask/bin/python
-from flask import Flask, url_for, jsonify, send_file, request
+from flask import Flask, url_for, jsonify, send_file, request, redirect
 
 import requests
 
@@ -108,6 +108,22 @@ class SCWIDX:
     def __init__(self):
         self.cache = {}
 
+    def latest_version(self, rbp):
+        fn_p = rbp+"/idx/scw/GNRL-SCWG-GRP-IDX_*"
+
+        print("searching for", fn_p)
+
+        fns = glob.glob(fn_p)
+
+        if len(fns) == 0:
+            raise Exception("no indices here "+fn_p)
+
+        fn = sorted(fns)[-1]
+
+        version = re.search("GNRL-SCWG-GRP-IDX_(.*?).fits.*", os.path.basename(fn)).groups()[0]
+
+        return version, fn
+
     def index(self, rbp, version=None):
         k = (rbp, version)
         if k in self.cache and self.cache[k]['expires_at'] > time.time():
@@ -115,17 +131,15 @@ class SCWIDX:
             return self.cache[k]
 
         if version is None:
-            fn_p = rbp+"/idx/scw/GNRL-SCWG-GRP-IDX_*"
-            fn = sorted(glob.glob(fn_p))[-1]
-
-            version = re.search("GNRL-SCWG-GRP-IDX_(.*?).fits.*", os.path.basename(fn)).groups()[0]
+            version, fn = self.latest_version(rbp)
 
             if 'nrt' in rbp:
                 expires_at = time.time() + 600
             else:
                 expires_at = time.time() + 7200
         else:
-            fn = rbp+"/idx/scw/GNRL-SCWG-GRP-IDX_"+version
+            fn_p = rbp+"/idx/scw/GNRL-SCWG-GRP-IDX_"+version+"*"
+            fn = glob.glob(fn_p)[0]
 
             expires_at = time.time() + 24*3600*7
 
@@ -170,12 +184,12 @@ def lastscw_rbp(rbp_var_suffix):
     return str(idx['table']['SWID'][-1])
 
 
-def scwlist_rbp(rbp_var_suffix, t1: float, t2: float, ra: Union[float, None], dec: Union[float, None], radius: Union[float, None]):
+def scwlist_rbp(rbp_var_suffix, index_version: str, t1: float, t2: float, ra: Union[float, None], dec: Union[float, None], radius: Union[float, None], min_good_isgri: Union[float, None]):
     rbp_var = "REP_BASE_PROD_"+rbp_var_suffix
     rbp = os.environ.get(rbp_var)
 
     print("rbp_var, rbp", rbp_var, rbp)
-    idx = scwidx.index(rbp)
+    idx = scwidx.index(rbp, version=index_version)
 
     m = idx['table']['TSTART'] < t2
     m &= idx['table']['TSTOP'] > t1
@@ -183,6 +197,9 @@ def scwlist_rbp(rbp_var_suffix, t1: float, t2: float, ra: Union[float, None], de
     if ra is not None and dec is not None and radius is not None:
         c = SkyCoord(idx['table']['RA_SCX'], idx['table']['DEC_SCX'], unit="deg")
         m &= c.separation(SkyCoord(ra, dec, unit="deg")).degree < radius
+    
+    if min_good_isgri is not None:
+        m &= idx['GOOD_ISGRI'] > min_good_isgri
 
     return list(idx['table']['SWID'][m])
 
@@ -195,6 +212,7 @@ def scwlist(readiness,t1,t2):
     ra = request.args.get("ra", default=None, type=float)
     dec = request.args.get("dec", default=None, type=float)
     radius = request.args.get("radius", default=None, type=float)
+    min_good_isgri = request.args.get("min-good-isgri", default=None, type=float)
 
     if readiness.lower() == "any":
         rbp_var_suffixes = ["NRT", "CONS"]
@@ -206,6 +224,28 @@ def scwlist(readiness,t1,t2):
         r = jsonify({'bad request:': 'readiness undefined'})
         r.status_code=400
         return r
+    
+    index_version = request.args.get('index_version', None)
+
+    if len(rbp_var_suffixes)==1:
+        if index_version is None:
+            rbp_var = "REP_BASE_PROD_"+rbp_var_suffixes[0]
+            rbp = os.environ.get(rbp_var)
+
+            latest_version, fn = scwidx.latest_version(rbp)
+
+            new_url = url_for("scwlist", readiness=readiness, t1=t1, t2=t2, index_version=latest_version)
+            print(new_url)
+
+            return redirect(new_url, code=302)
+        else:
+            assert re.match("\d+", index_version)
+    else:
+        if index_version is not None:
+            new_url = url_for("scwlist", readiness=readiness, t1=t1, t2=t2, index_version=None)
+            print(new_url)
+
+            return redirect(new_url, code=302)
 
     try:
         t1_ijd = time2ijd(t1)
@@ -219,7 +259,7 @@ def scwlist(readiness,t1,t2):
 
     for rbp_var_suffix in rbp_var_suffixes:
         try:
-            output += scwlist_rbp(rbp_var_suffix, t1_ijd, t2_ijd, ra, dec, radius)
+            output += scwlist_rbp(rbp_var_suffix, index_version, t1_ijd, t2_ijd, ra, dec, radius, min_good_isgri)
 
         except Exception as e:
             p = {'error from scwlist_rbp':repr(e),'output':output, 'traceback':traceback.format_exc() } # sentry!!
