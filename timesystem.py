@@ -278,7 +278,10 @@ def scwlist(readiness,t1,t2):
                                 index_version=index_version,
                             ))
         else:
-            return jsonify(dict(scwlist=output, index_version=index_version))
+            if request.args.get('return_index_version', 'no') == "yes":
+                return jsonify(dict(scwlist=output, index_version=index_version))
+            else:
+                return jsonify(output)
 
     r = jsonify(problems)
 

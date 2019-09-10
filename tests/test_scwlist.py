@@ -97,8 +97,13 @@ def test_any(client):
     print(r)
     assert r.status_code == 200
     print(r.json)
+    assert isinstance(r.json, list)
 
     assert (time.time() - t0)<1
+    
+    r=client.get(url_for('scwlist', readiness="any", t1='2019-06-10T11:27:45',t2='2019-06-10T14:27:45', return_index_version="yes"), follow_redirects=True)
+    print(r)
+    assert 'index_version' in r.json
 
 def test_any_radius(client):
     t0=time.time()
