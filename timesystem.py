@@ -33,6 +33,13 @@ context=socket.gethostname()
 
 app = Flask(__name__)
 
+class UserException(Exception):
+    pass
+
+@app.errorhandler(Exception)
+def user_exception(e):
+    return jsonify({'error':str(e)})
+
 def converttime_rbp(rbp_var_suffix,informat,intime,outformat):
     ct=pilton.heatool("converttime")
     
@@ -61,7 +68,7 @@ def detect_timeformat(t):
         if Time(t).format == "isot":
             return "UTC"
     except Exception as e:
-        raise Exception("unknown time format: %s"%repr(e))
+        raise UserException("unknown time format: %s"%repr(e))
 
 @app.route('/api/v1.0/converttime/<string:informat>/<string:intime>/<string:outformat>', methods=['GET'])
 def converttime(informat,intime,outformat):
@@ -87,7 +94,7 @@ def converttime(informat,intime,outformat):
                 return jsonify(r)
             else:
                 if 'is close' in r[outformat]:
-                    raise Exception("conversion impossible: "+repr(r))
+                    raise UserException("conversion impossible: "+repr(r))
 
                 return r[outformat]
 
@@ -116,7 +123,7 @@ class SCWIDX:
         fns = glob.glob(fn_p)
 
         if len(fns) == 0:
-            raise Exception("no indices here "+fn_p)
+            raise UserException("no indices here "+fn_p)
 
         fn = sorted(fns)[-1]
 
@@ -139,7 +146,15 @@ class SCWIDX:
                 expires_at = time.time() + 7200
         else:
             fn_p = rbp+"/idx/scw/GNRL-SCWG-GRP-IDX_"+version+"*"
-            fn = glob.glob(fn_p)[0]
+            fns = glob.glob(fn_p)
+
+            if len(fns)==0:
+                raise UserException("no index with requested version: %s"%version)
+
+            if len(fns)>1:
+                raise UserException("ambigious index with requested version: %s"%version)
+
+            fn = fns[0]
 
             expires_at = time.time() + 24*3600*7
 
@@ -222,7 +237,7 @@ def scwlist(readiness,t1,t2):
     elif readiness.lower() == "cons":
         rbp_var_suffixes = ["CONS", ]
     else:
-        r = jsonify({'bad request:': 'readiness undefined'})
+        r = jsonify({'bad request': 'readiness undefined'})
         r.status_code=400
         return r
     
@@ -236,12 +251,12 @@ def scwlist(readiness,t1,t2):
             index_version, fn = scwidx.latest_version(rbp)
         else:
             if not re.match("\d+", index_version):
-                r = jsonify({'bad request:': "non-conforming index version"})
+                r = jsonify({'bad request': "non-conforming index version"})
                 r.status_code=400
                 return r
     else:
         if index_version is not None:
-            r = jsonify({'bad request:': "index version can only be set with \"cons\" or \"nrt\" source, not \"any\""})
+            r = jsonify({'bad request': "index version can only be set with \"cons\" or \"nrt\" source, not \"any\""})
             r.status_code=400
             return r
 
@@ -249,7 +264,7 @@ def scwlist(readiness,t1,t2):
         t1_ijd = time2ijd(t1)
         t2_ijd = time2ijd(t2)
     except ValueError as e:
-        r = jsonify({'bad request:': 'failed to interpret time: '+repr(e)})
+        r = jsonify({'bad request': 'failed to interpret time: '+repr(e)})
         r.status_code=400
         return r
         
@@ -305,6 +320,7 @@ def test():
 @app.route('/poke', methods=['GET'])
 def poke():
     return "all is ok"
+
 
 if __name__ == '__main__':
 

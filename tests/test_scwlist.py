@@ -120,3 +120,32 @@ def test_good_isgri(client):
     assert r.status_code == 200
     print(r.json)
     
+def test_index_version(client):
+    t0=time.time()
+    r=client.get(url_for('scwlist', readiness="cons", t1='2019-06-10T11:27:45',t2='2019-09-10T14:27:45'), query_string=dict(return_index_version="yes", min_good_isgri=1000), follow_redirects=True)
+    print(r)
+    assert r.status_code == 200
+    print(r.json)
+
+    index_version = r.json['index_version']
+
+    assert index_version
+
+    r=client.get(url_for('scwlist', readiness="cons", t1='2019-06-10T11:27:45',t2='2019-09-10T14:27:45'), query_string=dict(index_version=index_version, min_good_isgri=1000), follow_redirects=True)
+
+    assert r.status_code == 200
+    print(r.json)
+    
+    
+    
+def test_bad_index_version(client):
+    t0=time.time()
+    r=client.get(url_for('scwlist', readiness="cons", t1='2019-06-10T11:27:45',t2='2019-09-10T14:27:45'), query_string=dict(index_version="bad_version", min_good_isgri=1000), follow_redirects=True)
+    print(r)
+    assert r.status_code == 400
+    print(r.json)
+
+    #r=client.get(url_for('scwlist', readiness="cons", t1='2019-06-10T11:27:45',t2='2019-09-10T14:27:45'), query_string=dict(index_version="20190919131949", min_good_isgri=1000), follow_redirects=True)
+    #print(r)
+    #assert r.status_code == 400
+    #print(r.json)
