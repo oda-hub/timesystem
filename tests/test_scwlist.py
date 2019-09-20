@@ -145,7 +145,12 @@ def test_bad_index_version(client):
     assert r.status_code == 400
     print(r.json)
 
-    #r=client.get(url_for('scwlist', readiness="cons", t1='2019-06-10T11:27:45',t2='2019-09-10T14:27:45'), query_string=dict(index_version="20190919131949", min_good_isgri=1000), follow_redirects=True)
-    #print(r)
-    #assert r.status_code == 400
-    #print(r.json)
+    r=client.get(url_for('scwlist', readiness="cons", t1='2019-06-10T11:27:45',t2='2019-09-10T14:27:45'), query_string=dict(index_version="20190919131949", min_good_isgri=1000), follow_redirects=True)
+    print(r)
+    assert r.status_code == 400
+    print(r.json)
+    
+    r=client.get(url_for('scwlist', readiness="cons", t1='2019-06-10T11:27:45',t2='2019-09-10T14:27:45'), query_string=dict(index_version="20180919131949", min_good_isgri=1000), follow_redirects=True)
+    print(r)
+    assert r.status_code == 200
+    print(r.json)

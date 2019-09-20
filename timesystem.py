@@ -98,6 +98,12 @@ def converttime(informat,intime,outformat):
 
                 return r[outformat]
 
+        except UserException as e:
+            p = {'problem':str(e)}
+            print("problem:", p)
+    
+            problems.append(p)
+
         except Exception as e:
             p = {'error from converttime':repr(e),'output':output, 'traceback':traceback.format_exc()}
             print("problem:", p)
@@ -106,7 +112,7 @@ def converttime(informat,intime,outformat):
 
     r = jsonify(problems)
 
-    r.status_code=500
+    r.status_code=400
     dlog(logging.ERROR,"error in converttime "+repr(problems))
     return r
 
@@ -149,7 +155,16 @@ class SCWIDX:
             fns = glob.glob(fn_p)
 
             if len(fns)==0:
-                raise UserException("no index with requested version: %s"%version)
+
+                all_fns = glob.glob(rbp+"/idx/scw/GNRL-SCWG-GRP-IDX_*")
+                versions = sorted([re.search("GNRL-SCWG-GRP-IDX_([0-9]+)\..*?",fn.split("/")[-1]).groups()[0] for fn in all_fns])
+
+                if int(version) < int(versions[0]):
+                    return self.index(rbp, versions[0])
+                else:
+                    versions_summary = "%s - %s" % (versions[0], versions[-1])
+
+                    raise UserException("no index with requested version: %s; have: %s"%(version, versions_summary))
 
             if len(fns)>1:
                 raise UserException("ambigious index with requested version: %s"%version)
@@ -274,6 +289,12 @@ def scwlist(readiness,t1,t2):
         try:
             output += scwlist_rbp(rbp_var_suffix, index_version, t1_ijd, t2_ijd, ra, dec, radius, min_good_isgri)
 
+        except UserException as e:
+            p = {'problem':str(e)}
+            print("problem:", p)
+    
+            problems.append(p)
+
         except Exception as e:
             p = {'error from scwlist_rbp':repr(e),'output':output, 'traceback':traceback.format_exc() } # sentry!!
             print("problem:", p)
@@ -300,7 +321,7 @@ def scwlist(readiness,t1,t2):
 
     r = jsonify(problems)
 
-    r.status_code=500
+    r.status_code=400
     dlog(logging.ERROR,"error in converttime "+repr(problems))
 
     # return index version, last scw
