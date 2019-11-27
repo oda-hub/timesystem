@@ -8,7 +8,7 @@ import sys
 import glob
 import time
 
-from typing import TypeVar, Iterable, Tuple, Union
+from typing import TypeVar, Iterable, Tuple, Union, List
 
 import copy
 import re
@@ -214,7 +214,16 @@ def lastscw_rbp(rbp_var_suffix):
     return str(idx['table']['SWID'][-1])
 
 
-def scwlist_rbp(rbp_var_suffix, index_version: str, t1: float, t2: float, ra: Union[float, None], dec: Union[float, None], radius: Union[float, None], min_good_isgri: Union[float, None]):
+def scwlist_rbp(rbp_var_suffix, 
+                index_version: str, 
+                t1: float, 
+                t2: float, 
+                ra: Union[float, None], 
+                dec: Union[float, None], 
+                radius: Union[float, None], 
+                min_good_isgri: Union[float, None], 
+                return_columns: Union[str, None],
+                ):
     rbp_var = "REP_BASE_PROD_"+rbp_var_suffix
     rbp = os.environ.get(rbp_var)
 
@@ -232,18 +241,29 @@ def scwlist_rbp(rbp_var_suffix, index_version: str, t1: float, t2: float, ra: Un
         m &= idx['table']['TELAPSE'] > min_good_isgri
         m &= idx['table']['IBISMODE'] == 41
 
-    return list(idx['table']['SWID'][m])
+    if return_columns is None:
+        return_columns = "SWID"
+
+    r = {}
+    for c in return_columns.split(","):
+        if c in idx['table'].columns:
+            r[c] = idx['table'][c][m].tolist()
+        else:
+            r[c] = "undefined, have: %s"%(", ".join(idx['table'].columns))
+            print(c, "undefined, have: %s"%(", ".join(idx['table'].columns)))
+  
+    return r
 
 @app.route('/api/v1.0/scwlist/<string:readiness>/<string:t1>/<string:t2>', methods=['GET'])
 def scwlist(readiness,t1,t2):
     problems = []
-    output = []
 
 
     ra = request.args.get("ra", default=None, type=float)
     dec = request.args.get("dec", default=None, type=float)
     radius = request.args.get("radius", default=None, type=float)
     min_good_isgri = request.args.get("min_good_isgri", default=None, type=float)
+    return_columns = request.args.get("return_columns", default=None, type=str)
 
     if readiness.lower() == "any":
         rbp_var_suffixes = ["NRT", "CONS"]
@@ -284,10 +304,16 @@ def scwlist(readiness,t1,t2):
         return r
         
         
+    output = {}
 
     for rbp_var_suffix in rbp_var_suffixes:
         try:
-            output += scwlist_rbp(rbp_var_suffix, index_version, t1_ijd, t2_ijd, ra, dec, radius, min_good_isgri)
+            for k,v in scwlist_rbp(rbp_var_suffix, index_version, t1_ijd, t2_ijd, ra, dec, radius, min_good_isgri, return_columns=return_columns).items():
+                if k not in output:
+                    output[k] = []
+
+                output[k] += v
+                
 
         except UserException as e:
             p = {'problem':str(e)}
@@ -302,7 +328,8 @@ def scwlist(readiness,t1,t2):
             problems.append(p)
 
     if problems == []:
-        output = sorted(set(output))
+        if return_columns is None:
+            output = sorted(set(output['SWID']))
 
         if 'debug' in request.args:
             return jsonify(dict(
