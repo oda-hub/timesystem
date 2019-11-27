@@ -36,7 +36,7 @@ app = Flask(__name__)
 class UserException(Exception):
     pass
 
-@app.errorhandler(Exception)
+@app.errorhandler(UserException)
 def user_exception(e):
     return jsonify({'error':str(e)})
 
@@ -249,8 +249,9 @@ def scwlist_rbp(rbp_var_suffix,
         if c in idx['table'].columns:
             r[c] = idx['table'][c][m].tolist()
         else:
-            r[c] = "undefined, have: %s"%(", ".join(idx['table'].columns))
-            print(c, "undefined, have: %s"%(", ".join(idx['table'].columns)))
+            m = "undefined column name %s, have: %s"%(c, ", ".join(idx['table'].columns))
+            print(c, m)
+            raise UserException(m)
   
     return r
 
@@ -316,7 +317,7 @@ def scwlist(readiness,t1,t2):
                 
 
         except UserException as e:
-            p = {'problem':str(e)}
+            p = {'problem in '+rbp_var_suffix:str(e)}
             print("problem:", p)
     
             problems.append(p)
