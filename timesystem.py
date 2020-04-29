@@ -359,6 +359,24 @@ def scwlist(readiness,t1,t2):
     else:
         return r
 
+@app.route('/healthcheck', methods=['GET'])
+def healthcheck():
+    r = {}
+
+    t = time.time()
+    r['nrev_cons'] = len(glob.glob(os.path.join(os.environ.get("REP_BASE_PROD_CONS"),"scw/*")))
+    r['tspent_cons'] = time.time() - t
+
+    t = time.time()
+    r['nrev_nrt'] = len(glob.glob(os.path.join(os.environ.get("REP_BASE_PROD_NRT"),"scw/*")))
+    r['tspent_nrt'] = time.time() - t
+
+    if r['nrev_cons'] > 10 and r['nrev_nrt'] > 10:
+        return jsonify({'status':'OK', **r}), 200
+    else:
+        return jsonify({'status':'NOK', **r}), 400
+
+
 @app.route('/test', methods=['GET'])
 def test():
     import subprocess
