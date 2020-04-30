@@ -16,12 +16,12 @@ import logging
 import socket
 import traceback
 
-import pilton
+import pilton # type: ignore
 
-from astropy.table import Table
-from astropy.io import fits
-from astropy.time import Time
-from astropy.coordinates import SkyCoord
+from astropy.table import Table # type: ignore
+from astropy.io import fits # type: ignore
+from astropy.time import Time # type: ignore
+from astropy.coordinates import SkyCoord # type: ignore
 
 
 def dlog(*a, **aa):
@@ -390,17 +390,7 @@ def poke():
 
 
 if __name__ == '__main__':
-
-    if consul:
-        import os
-        from export_service import export_service,pick_port
-        os.environ['EXPORT_SERVICE_PORT']="%i"%pick_port("")
-        port=export_service("integral-timesystem","/poke",interval=0.1,timeout=0.2)
-
-        host=os.environ['EXPORT_SERVICE_HOST'] if 'EXPORT_SERVICE_HOST' in os.environ else '127.0.0.1'
-    else:
-        host="0.0.0.0"
-        port=5000
+    host="0.0.0.0"
+    port=5000
         
-    ##
     app.run(debug=False,port=port,host=host)
