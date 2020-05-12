@@ -387,11 +387,21 @@ def healthcheck():
     r['tspent_cons'] = time.time() - t
 
     t = time.time()
+    r['nrev_idx_cons'] = len(glob.glob(os.path.join(
+        os.environ.get("REP_BASE_PROD_CONS"), "idx/scw/*")))
+    r['tspent_idx_cons'] = time.time() - t
+
+    t = time.time()
     r['nrev_nrt'] = len(glob.glob(os.path.join(
         os.environ.get("REP_BASE_PROD_NRT"), "scw/*")))
     r['tspent_nrt'] = time.time() - t
+    
+    t = time.time()
+    r['nrev_idx_nrt'] = len(glob.glob(os.path.join(
+        os.environ.get("REP_BASE_PROD_NRT"), "idx/scw/*")))
+    r['tspent_idx_nrt'] = time.time() - t
 
-    if r['nrev_cons'] > 10 and r['nrev_nrt'] > 10:
+    if r['nrev_idx_cons'] > 10 and r['nrev_idx_nrt'] > 10 and r['nrev_cons'] > 10 and r['nrev_nrt'] > 10:
         return jsonify({'status': 'OK', **r}), 200
     else:
         return jsonify({'status': 'NOK', **r}), 400
