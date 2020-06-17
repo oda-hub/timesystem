@@ -401,7 +401,7 @@ def healthcheck():
         os.environ.get("REP_BASE_PROD_NRT"), "idx/scw/*")))
     r['tspent_idx_nrt'] = time.time() - t
 
-    if r['nrev_idx_cons'] > 10 and r['nrev_idx_nrt'] > 10 and r['nrev_cons'] > 10 and r['nrev_nrt'] > 10:
+    if r['nrev_idx_cons'] > 0 and r['nrev_idx_nrt'] > 0 and r['nrev_cons'] > 10 and r['nrev_nrt'] > 10:
         return jsonify({'status': 'OK', **r}), 200
     else:
         return jsonify({'status': 'NOK', **r}), 400
