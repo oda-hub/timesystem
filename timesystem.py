@@ -83,7 +83,8 @@ def testcookie():
      </body>
     </html>
             """)
-    resp.set_cookie('somecookiename', 'I am cookie', httponly=False)
+    resp.set_cookie('example_httponly_cookie', 'value_of_example_httponly_cookie', httponly=True)
+    resp.set_cookie('example_nonhttponly_cookie', 'value_of_example_nonhttponly_cookie', httponly=False)
     return resp 
 
 @app.route('/api/v1.0/converttime/<string:informat>/<string:intime>/<string:outformat>', methods=['GET'])
