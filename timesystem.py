@@ -70,6 +70,22 @@ def detect_timeformat(t):
     except Exception as e:
         raise UserException("unknown time format: %s"%repr(e))
 
+@app.route('/api/testcookie', methods=['GET'])
+def testcookie(informat,intime,outformat):
+    resp = make_response("""
+    <html>
+     <head>
+     </head>
+     <body>
+      <script>
+       console.log(document.cookie);
+      </script>
+     </body>
+    </html>
+            """)
+    resp.set_cookie('somecookiename', 'I am cookie', httponly=False)
+    return resp 
+
 @app.route('/api/v1.0/converttime/<string:informat>/<string:intime>/<string:outformat>', methods=['GET'])
 def converttime(informat,intime,outformat):
     if outformat=="ANY":
