@@ -71,7 +71,7 @@ def detect_timeformat(t):
         raise UserException("unknown time format: %s"%repr(e))
 
 @app.route('/api/testcookie', methods=['GET'])
-def testcookie(informat,intime,outformat):
+def testcookie():
     resp = make_response("""
     <html>
      <head>
